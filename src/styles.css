@@ -186,6 +186,55 @@ input.invalid {
   border-color: var(--warn);
 }
 
+/* ---- 断点 ---- */
+
+.rule-card.rule-breakpoint {
+  border-color: var(--error);
+  box-shadow: inset 3px 0 0 var(--error);
+}
+
+.bp-toggle {
+  padding: 3px 9px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.bp-toggle.on {
+  border-color: var(--error);
+  color: var(--error);
+}
+
+.bp-banner {
+  border-color: var(--accent);
+  background: rgba(91, 157, 255, 0.1);
+  color: var(--text);
+}
+
+.banner-dismiss {
+  margin-left: 10px;
+  padding: 2px 10px;
+  font-size: 12px;
+}
+
+/* ---- 断点调试 ---- */
+
+.debug-hint {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.step-pending {
+  border-left-color: var(--error);
+  border-color: var(--error);
+  background: rgba(229, 83, 75, 0.07);
+}
+
+.tag.tag-breakpoint-hit {
+  background: rgba(229, 83, 75, 0.2);
+  color: var(--error);
+}
+
 .tag.tag-shadow {
   background: rgba(224, 169, 62, 0.18);
   color: var(--warn);

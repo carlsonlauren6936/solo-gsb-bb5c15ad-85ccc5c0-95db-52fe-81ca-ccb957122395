@@ -8,11 +8,29 @@ interface Props {
   onMethodChange: (m: string) => void;
   onUrlChange: (u: string) => void;
   onRun: () => void;
+  onDebugStart: () => void;
+  /** 已设置断点的规则数，为 0 时调试按钮给出说明性 title */
+  breakpointCount: number;
 }
 
-export function Simulator({ method, url, onMethodChange, onUrlChange, onRun }: Props) {
+export function Simulator({
+  method,
+  url,
+  onMethodChange,
+  onUrlChange,
+  onRun,
+  onDebugStart,
+  breakpointCount,
+}: Props) {
   const [touched, setTouched] = useState(false);
   const invalid = touched && url.trim() === '';
+
+  const submit = (kind: 'run' | 'debug') => {
+    setTouched(true);
+    if (url.trim() === '') return;
+    if (kind === 'run') onRun();
+    else onDebugStart();
+  };
 
   return (
     <section className="panel">
@@ -21,8 +39,7 @@ export function Simulator({ method, url, onMethodChange, onUrlChange, onRun }: P
         className="sim-form"
         onSubmit={(e) => {
           e.preventDefault();
-          setTouched(true);
-          if (url.trim() !== '') onRun();
+          submit('run');
         }}
       >
         <select value={method} onChange={(e) => onMethodChange(e.target.value)}>
@@ -41,6 +58,17 @@ export function Simulator({ method, url, onMethodChange, onUrlChange, onRun }: P
         />
         <button type="submit" className="primary">
           运行
+        </button>
+        <button
+          type="button"
+          onClick={() => submit('debug')}
+          title={
+            breakpointCount === 0
+              ? '尚未设置断点：将直接运行到终止（先在规则卡上点「断点」）'
+              : `暂停在首条带断点的命中规则前（已设 ${breakpointCount} 个断点）`
+          }
+        >
+          ⏸ 开始调试
         </button>
       </form>
       {invalid && <div className="banner error">请输入待模拟的 URL</div>}

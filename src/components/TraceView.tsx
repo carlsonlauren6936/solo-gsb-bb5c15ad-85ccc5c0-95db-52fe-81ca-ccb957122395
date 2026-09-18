@@ -116,8 +116,31 @@ const STATUS_META: Record<
   'invalid-target': { cls: 'error', icon: '❌', title: '失败 · 目标无法解析' },
 };
 
-export function TraceView({ sim }: { sim: Simulation }) {
+/** 终止结果横幅：轨迹与断点调试面板共用 */
+export function ResultBanner({ sim }: { sim: Simulation }) {
   const meta = STATUS_META[sim.status];
+  return (
+    <div className={`banner ${meta.cls}`}>
+      <strong>
+        {meta.icon} {meta.title}
+      </strong>
+      <p>{sim.reason}</p>
+      {sim.status === 'final' && sim.finalUrl && (
+        <p>
+          最终 URL：<code className="url-to">{sim.finalUrl}</code>
+        </p>
+      )}
+      {sim.status === 'redirect' && (
+        <p>
+          {sim.redirectStatus} Location：
+          <code className="url-to">{sim.redirectLocation}</code>
+        </p>
+      )}
+    </div>
+  );
+}
+
+export function TraceView({ sim }: { sim: Simulation }) {
   return (
     <section className="panel">
       <h2>执行轨迹（共 {sim.steps.length} 步）</h2>
@@ -127,23 +150,7 @@ export function TraceView({ sim }: { sim: Simulation }) {
       {sim.steps.map((s) => (
         <StepCard key={s.n} step={s} />
       ))}
-      <div className={`banner ${meta.cls}`}>
-        <strong>
-          {meta.icon} {meta.title}
-        </strong>
-        <p>{sim.reason}</p>
-        {sim.status === 'final' && sim.finalUrl && (
-          <p>
-            最终 URL：<code className="url-to">{sim.finalUrl}</code>
-          </p>
-        )}
-        {sim.status === 'redirect' && (
-          <p>
-            {sim.redirectStatus} Location：
-            <code className="url-to">{sim.redirectLocation}</code>
-          </p>
-        )}
-      </div>
+      <ResultBanner sim={sim} />
     </section>
   );
 }

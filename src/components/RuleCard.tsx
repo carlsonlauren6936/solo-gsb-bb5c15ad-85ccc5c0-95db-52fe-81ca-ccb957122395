@@ -16,6 +16,9 @@ interface Props {
   total: number;
   /** 遮蔽诊断结果：存在即表示该规则不可达 */
   shadow?: ShadowReport;
+  /** 该规则是否带断点（断点只存在于当前页面会话） */
+  breakpointOn: boolean;
+  onToggleBreakpoint: () => void;
   /** 离散改动（下拉选择、启停等）：立即作为一步进入历史 */
   onCommit: (next: Rule) => void;
   /** 文本输入框的聚焦 / 输入 / 失焦：同一次聚焦周期合并为一步 */
@@ -54,6 +57,8 @@ export function RuleCard({
   index,
   total,
   shadow,
+  breakpointOn,
+  onToggleBreakpoint,
   onCommit,
   session,
   onMove,
@@ -98,7 +103,9 @@ export function RuleCard({
 
   return (
     <div
-      className={`rule-card${rule.enabled ? '' : ' rule-off'}${shadow ? ' rule-shadowed' : ''}`}
+      className={`rule-card${rule.enabled ? '' : ' rule-off'}${
+        shadow ? ' rule-shadowed' : ''
+      }${breakpointOn ? ' rule-breakpoint' : ''}`}
     >
       <div className="rule-head">
         <span className="rule-order">#{index + 1}</span>
@@ -108,6 +115,19 @@ export function RuleCard({
           {...textProps('name')}
         />
         {shadow && <span className="tag tag-shadow">不可达</span>}
+        <button
+          type="button"
+          className={`bp-toggle${breakpointOn ? ' on' : ''}`}
+          title={
+            breakpointOn
+              ? '取消断点（仅当前页面会话保留）'
+              : '在此规则命中前断点暂停（仅当前页面会话保留）'
+          }
+          aria-pressed={breakpointOn}
+          onClick={onToggleBreakpoint}
+        >
+          {breakpointOn ? '🔴 断点' : '⚪ 断点'}
+        </button>
         <label className="rule-enable">
           <input
             type="checkbox"

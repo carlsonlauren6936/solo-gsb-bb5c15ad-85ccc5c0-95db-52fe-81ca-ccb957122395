@@ -9,6 +9,9 @@ import type { RuleHistoryApi } from '../useRuleHistory';
 
 interface Props {
   history: RuleHistoryApi;
+  /** 当前带断点的规则 id 集合（仅当前页面会话保留） */
+  breakpoints: ReadonlySet<string>;
+  onToggleBreakpoint: (ruleId: string) => void;
   onShare: () => void;
 }
 
@@ -19,7 +22,7 @@ export interface TextSession<T> {
   end: (next: T) => void;
 }
 
-export function RulesPanel({ history, onShare }: Props) {
+export function RulesPanel({ history, breakpoints, onToggleBreakpoint, onShare }: Props) {
   const { rules, canUndo, canRedo, commit } = history;
   const fileRef = useRef<HTMLInputElement>(null);
   const [importError, setImportError] = useState<string | null>(null);
@@ -139,6 +142,13 @@ export function RulesPanel({ history, onShare }: Props) {
 
       {importError && <div className="banner error">导入失败：{importError}</div>}
 
+      {breakpoints.size > 0 && (
+        <div className="banner bp-banner">
+          ⏸ 已为 {breakpoints.size} 条规则设置断点：在右侧输入请求后点「开始调试」，
+          会暂停在首条带断点的命中规则动作执行前。断点只保留在当前页面会话。
+        </div>
+      )}
+
       {shadowMap.size > 0 && (
         <div className="banner warn">
           ⚠️ 遮蔽诊断：{shadowMap.size} 条已启用规则不可达（全部被更早的启用规则覆盖），
@@ -156,6 +166,8 @@ export function RulesPanel({ history, onShare }: Props) {
             index={i}
             total={rules.length}
             shadow={shadowMap.get(rule.id)}
+            breakpointOn={breakpoints.has(rule.id)}
+            onToggleBreakpoint={() => onToggleBreakpoint(rule.id)}
             onCommit={(next) => update(i, next)}
             session={textSession(i)}
             onMove={(dir) => move(i, dir)}
