@@ -10,6 +10,9 @@ import type { RuleHistoryApi } from '../useRuleHistory';
 interface Props {
   history: RuleHistoryApi;
   onShare: () => void;
+  /** 已设置断点的规则 id 集合（仅当前页面会话保留） */
+  breakpoints: ReadonlySet<string>;
+  onToggleBreakpoint: (ruleId: string) => void;
 }
 
 /** 文本输入框的合并会话：聚焦开始、连续输入、失焦合并为一步 */
@@ -19,7 +22,12 @@ export interface TextSession<T> {
   end: (next: T) => void;
 }
 
-export function RulesPanel({ history, onShare }: Props) {
+export function RulesPanel({
+  history,
+  onShare,
+  breakpoints,
+  onToggleBreakpoint,
+}: Props) {
   const { rules, canUndo, canRedo, commit } = history;
   const fileRef = useRef<HTMLInputElement>(null);
   const [importError, setImportError] = useState<string | null>(null);
@@ -156,10 +164,12 @@ export function RulesPanel({ history, onShare }: Props) {
             index={i}
             total={rules.length}
             shadow={shadowMap.get(rule.id)}
+            breakpoint={breakpoints.has(rule.id)}
             onCommit={(next) => update(i, next)}
             session={textSession(i)}
             onMove={(dir) => move(i, dir)}
             onRemove={() => remove(i)}
+            onToggleBreakpoint={() => onToggleBreakpoint(rule.id)}
           />
         ))
       )}

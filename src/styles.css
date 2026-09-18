@@ -180,6 +180,41 @@ input.invalid {
   opacity: 0.55;
 }
 
+/* ---- 断点（仅当前页面会话保留） ---- */
+
+.rule-card.rule-breakpoint {
+  border-color: var(--error);
+  box-shadow: inset 3px 0 0 var(--error);
+}
+
+.bp-toggle {
+  padding: 0 6px;
+  line-height: 1;
+  font-size: 15px;
+  color: var(--muted);
+  border-color: transparent;
+  background: transparent;
+}
+
+.bp-toggle.on {
+  color: var(--error);
+}
+
+.bp-toggle:hover:not(:disabled) {
+  border-color: var(--error);
+  color: var(--error);
+}
+
+.tag.tag-bp {
+  background: rgba(229, 83, 75, 0.18);
+  color: var(--error);
+}
+
+.tag.tag-step {
+  background: rgba(91, 157, 255, 0.18);
+  color: var(--accent);
+}
+
 /* ---- 遮蔽诊断 ---- */
 
 .rule-shadowed {
@@ -331,6 +366,7 @@ input.invalid {
 
 .sim-form {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
@@ -467,6 +503,61 @@ input.invalid {
   color: var(--muted);
   opacity: 0.75;
   word-break: break-all;
+}
+
+/* ---- 断点调试 ---- */
+
+.debug-hint {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.debug-panel .panel-title {
+  align-items: flex-start;
+}
+
+.debug-state {
+  margin-left: 8px;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--warn);
+}
+
+.debug-context {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: var(--muted);
+  word-break: break-all;
+}
+
+.debug-context .debug-count {
+  display: inline-block;
+  margin-left: 8px;
+  color: var(--muted);
+  opacity: 0.85;
+}
+
+.debug-context code {
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.step-pending {
+  border-left-color: var(--error);
+  border-color: var(--error);
+  background: rgba(229, 83, 75, 0.07);
+}
+
+.url-to.url-pending {
+  color: var(--warn);
+}
+
+.debug-finished-note {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 4px 0 8px;
 }
 
 /* ---- 结果横幅 ---- */

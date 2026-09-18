@@ -134,13 +134,21 @@ function fail(status: Simulation['status'], steps: Step[], reason: string): Simu
 }
 
 /**
- * 模拟一次请求：
+ * 模拟核心（生成器形式）：
  * 1. 每步先计算状态键（方法 + URL API 序列化结果），重复即判循环；
  * 2. 从第一条规则开始找首个命中；
- * 3. rewrite 应用后回到第 1 步重新匹配；redirect / stop 立即终止；
- * 4. 最多执行 MAX_STEPS 步，超限判失败。
+ * 3. 命中后、动作执行前 yield 该步骤——调用方可在此暂停（断点 / 单步）；
+ * 4. 恢复后执行动作：rewrite 应用后回到第 1 步重新匹配；redirect / stop 立即终止；
+ * 5. 最多执行 MAX_STEPS 步，超限判失败。
+ *
+ * 暂停只停在 yield 点：seen 循环检测状态、步数计数与当前 URL 都保存在生成器闭包中，
+ * 恢复执行时原样沿用，不会因暂停重置。
  */
-export function simulate(rules: Rule[], method: string, inputUrl: string): Simulation {
+export function* runSimulation(
+  rules: Rule[],
+  method: string,
+  inputUrl: string,
+): Generator<Step, Simulation> {
   const steps: Step[] = [];
   const m = method.toUpperCase();
 
@@ -188,9 +196,11 @@ export function simulate(rules: Rule[], method: string, inputUrl: string): Simul
       rule: structuredClone(rule),
       params,
     };
+    // 先计入轨迹，再在动作执行前暂停
+    steps.push(step);
+    yield step;
 
     if (rule.action.type === 'stop') {
-      steps.push(step);
       return {
         status: 'stopped',
         ok: true,
@@ -204,7 +214,6 @@ export function simulate(rules: Rule[], method: string, inputUrl: string): Simul
     try {
       next = resolveTarget(target, url);
     } catch {
-      steps.push(step);
       return fail(
         'invalid-target',
         steps,
@@ -215,7 +224,6 @@ export function simulate(rules: Rule[], method: string, inputUrl: string): Simul
     if (rule.action.type === 'redirect') {
       step.location = next.toString();
       step.status = rule.action.status;
-      steps.push(step);
       return {
         status: 'redirect',
         ok: true,
@@ -228,7 +236,6 @@ export function simulate(rules: Rule[], method: string, inputUrl: string): Simul
 
     // rewrite：应用后从第一条规则重新匹配
     step.urlAfter = next.toString();
-    steps.push(step);
     url = next;
   }
 
@@ -237,4 +244,15 @@ export function simulate(rules: Rule[], method: string, inputUrl: string): Simul
     steps,
     `已执行 ${MAX_STEPS} 步仍未终止，判定为潜在循环，不予返回成功结果`,
   );
+}
+
+/**
+ * 模拟一次请求并跑完全程（普通「运行」）：语义与 {@link runSimulation} 完全一致，
+ * 只是不停顿地耗尽生成器。
+ */
+export function simulate(rules: Rule[], method: string, inputUrl: string): Simulation {
+  const gen = runSimulation(rules, method, inputUrl);
+  let cur = gen.next();
+  while (!cur.done) cur = gen.next();
+  return cur.value;
 }

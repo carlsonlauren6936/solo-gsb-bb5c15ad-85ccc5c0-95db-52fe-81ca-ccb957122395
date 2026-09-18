@@ -16,12 +16,15 @@ interface Props {
   total: number;
   /** 遮蔽诊断结果：存在即表示该规则不可达 */
   shadow?: ShadowReport;
+  /** 该规则上是否设有断点（仅保留在当前页面会话） */
+  breakpoint: boolean;
   /** 离散改动（下拉选择、启停等）：立即作为一步进入历史 */
   onCommit: (next: Rule) => void;
   /** 文本输入框的聚焦 / 输入 / 失焦：同一次聚焦周期合并为一步 */
   session: TextSession<Rule>;
   onMove: (dir: -1 | 1) => void;
   onRemove: () => void;
+  onToggleBreakpoint: () => void;
 }
 
 const ACTION_LABEL: Record<Rule['action']['type'], string> = {
@@ -54,10 +57,12 @@ export function RuleCard({
   index,
   total,
   shadow,
+  breakpoint,
   onCommit,
   session,
   onMove,
   onRemove,
+  onToggleBreakpoint,
 }: Props) {
   const set = <K extends keyof Rule>(key: K, value: Rule[K]) =>
     onCommit({ ...rule, [key]: value });
@@ -98,10 +103,19 @@ export function RuleCard({
 
   return (
     <div
-      className={`rule-card${rule.enabled ? '' : ' rule-off'}${shadow ? ' rule-shadowed' : ''}`}
+      className={`rule-card${rule.enabled ? '' : ' rule-off'}${shadow ? ' rule-shadowed' : ''}${breakpoint ? ' rule-breakpoint' : ''}`}
     >
       <div className="rule-head">
         <span className="rule-order">#{index + 1}</span>
+        <button
+          type="button"
+          className={`bp-toggle${breakpoint ? ' on' : ''}`}
+          title={breakpoint ? '移除断点' : '在此规则上设置断点（仅当前页面会话保留）'}
+          aria-pressed={breakpoint}
+          onClick={onToggleBreakpoint}
+        >
+          {breakpoint ? '●' : '○'}
+        </button>
         <input
           className="rule-name"
           placeholder="规则名称"

@@ -36,21 +36,29 @@ function searchOf(u: string): string {
 export function StepCard({
   step,
   showRuleId = false,
+  pending = false,
+  pauseReason,
 }: {
   step: Step;
   /** 回归对比等场景需要按 rule.id 定位差异时开启 */
   showRuleId?: boolean;
+  /** 断点 / 单步暂停：动作尚未执行，只展示即将执行的动作（不显示执行结果） */
+  pending?: boolean;
+  /** 暂停时标注停在断点还是单步 */
+  pauseReason?: 'breakpoint' | 'step';
 }) {
   const { rule } = step;
   const paramEntries = Object.entries(step.params);
   return (
-    <div className="step">
+    <div className={`step${pending ? ' step-pending' : ''}`}>
       <header>
         <span className="step-n">步骤 {step.n}</span>
         命中规则 #{step.ruleIndex + 1}「{rule.name}」
         <span className={`tag action-${rule.action.type}`}>
           {ACTION_LABEL[rule.action.type]}
         </span>
+        {pauseReason === 'breakpoint' && <span className="tag tag-bp">⏸ 断点暂停</span>}
+        {pauseReason === 'step' && <span className="tag tag-step">⏸ 单步暂停</span>}
       </header>
       <ul className="conds">
         <li>
@@ -83,19 +91,29 @@ export function StepCard({
       )}
       <div className="url-line">
         <span className="url-from">{step.urlBefore}</span>
-        {rule.action.type === 'rewrite' && (
+        {pending && (
+          <>
+            <span className="arrow">即将执行 · {ACTION_LABEL[rule.action.type]}</span>
+            {rule.action.type !== 'stop' && (
+              <span className="url-to url-pending">{rule.action.target}</span>
+            )}
+          </>
+        )}
+        {!pending && rule.action.type === 'rewrite' && (
           <>
             <span className="arrow">→ 重写为</span>
             <span className="url-to">{step.urlAfter}</span>
           </>
         )}
-        {rule.action.type === 'redirect' && (
+        {!pending && rule.action.type === 'redirect' && (
           <>
             <span className="arrow">→ {step.status} 重定向到</span>
             <span className="url-to">{step.location}</span>
           </>
         )}
-        {rule.action.type === 'stop' && <span className="arrow">→ 请求被停止</span>}
+        {!pending && rule.action.type === 'stop' && (
+          <span className="arrow">→ 请求被停止</span>
+        )}
       </div>
       <div className="state-key">状态键：{step.stateKey}</div>
       {showRuleId && <div className="state-key">规则 id：{rule.id}</div>}
@@ -117,7 +135,6 @@ const STATUS_META: Record<
 };
 
 export function TraceView({ sim }: { sim: Simulation }) {
-  const meta = STATUS_META[sim.status];
   return (
     <section className="panel">
       <h2>执行轨迹（共 {sim.steps.length} 步）</h2>
@@ -127,23 +144,31 @@ export function TraceView({ sim }: { sim: Simulation }) {
       {sim.steps.map((s) => (
         <StepCard key={s.n} step={s} />
       ))}
-      <div className={`banner ${meta.cls}`}>
-        <strong>
-          {meta.icon} {meta.title}
-        </strong>
-        <p>{sim.reason}</p>
-        {sim.status === 'final' && sim.finalUrl && (
-          <p>
-            最终 URL：<code className="url-to">{sim.finalUrl}</code>
-          </p>
-        )}
-        {sim.status === 'redirect' && (
-          <p>
-            {sim.redirectStatus} Location：
-            <code className="url-to">{sim.redirectLocation}</code>
-          </p>
-        )}
-      </div>
+      <ResultBanner sim={sim} />
     </section>
+  );
+}
+
+/** 终止结果横幅：执行轨迹与断点调试结束时共用 */
+export function ResultBanner({ sim }: { sim: Simulation }) {
+  const meta = STATUS_META[sim.status];
+  return (
+    <div className={`banner ${meta.cls}`}>
+      <strong>
+        {meta.icon} {meta.title}
+      </strong>
+      <p>{sim.reason}</p>
+      {sim.status === 'final' && sim.finalUrl && (
+        <p>
+          最终 URL：<code className="url-to">{sim.finalUrl}</code>
+        </p>
+      )}
+      {sim.status === 'redirect' && (
+        <p>
+          {sim.redirectStatus} Location：
+          <code className="url-to">{sim.redirectLocation}</code>
+        </p>
+      )}
+    </div>
   );
 }

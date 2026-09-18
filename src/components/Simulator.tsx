@@ -8,11 +8,33 @@ interface Props {
   onMethodChange: (m: string) => void;
   onUrlChange: (u: string) => void;
   onRun: () => void;
+  onStartDebug: () => void;
+  /** 当前设有断点的规则数（仅当前页面会话保留） */
+  breakpointCount: number;
+  /** 是否正处在断点调试会话中 */
+  debugging: boolean;
 }
 
-export function Simulator({ method, url, onMethodChange, onUrlChange, onRun }: Props) {
+export function Simulator({
+  method,
+  url,
+  onMethodChange,
+  onUrlChange,
+  onRun,
+  onStartDebug,
+  breakpointCount,
+  debugging,
+}: Props) {
   const [touched, setTouched] = useState(false);
   const invalid = touched && url.trim() === '';
+  const submit = () => {
+    setTouched(true);
+    if (url.trim() !== '') onRun();
+  };
+  const startDebug = () => {
+    setTouched(true);
+    if (url.trim() !== '') onStartDebug();
+  };
 
   return (
     <section className="panel">
@@ -21,8 +43,7 @@ export function Simulator({ method, url, onMethodChange, onUrlChange, onRun }: P
         className="sim-form"
         onSubmit={(e) => {
           e.preventDefault();
-          setTouched(true);
-          if (url.trim() !== '') onRun();
+          submit();
         }}
       >
         <select value={method} onChange={(e) => onMethodChange(e.target.value)}>
@@ -42,8 +63,25 @@ export function Simulator({ method, url, onMethodChange, onUrlChange, onRun }: P
         <button type="submit" className="primary">
           运行
         </button>
+        <button
+          type="button"
+          onClick={startDebug}
+          disabled={breakpointCount === 0}
+          title={
+            breakpointCount === 0
+              ? '先在规则卡片上用 ○ 设置至少一个断点'
+              : '在首条带断点的命中规则前暂停'
+          }
+        >
+          {debugging ? '重新开始调试' : '开始调试'}
+        </button>
       </form>
       {invalid && <div className="banner error">请输入待模拟的 URL</div>}
+      <div className="debug-hint">
+        {breakpointCount === 0
+          ? '点击规则卡片左侧的 ○ 设置断点（仅本页面会话保留），即可开始断点调试。'
+          : `已设 ${breakpointCount} 个断点：开始调试后在首条带断点的命中规则前暂停，可用「单步 / 继续」推进。`}
+      </div>
       <div className="presets">
         {PRESETS.map((p) => (
           <button

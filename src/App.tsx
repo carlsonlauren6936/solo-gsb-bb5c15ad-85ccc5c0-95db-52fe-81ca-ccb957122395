@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Rule, Simulation } from './types';
 import { simulate } from './engine';
+import { DebugSession, debugContextKey } from './debug';
 import { validateRules } from './validate';
 import { SAMPLE_RULES, PRESETS } from './samples';
 import { useRuleHistory } from './useRuleHistory';
 import { RulesPanel } from './components/RulesPanel';
 import { Simulator } from './components/Simulator';
 import { TraceView } from './components/TraceView';
+import DebugPanel from './components/DebugPanel';
 import { RegressionPanel } from './components/RegressionPanel';
 import { ShareCreateDialog } from './components/ShareCreateDialog';
 import { ShareUnlock } from './components/ShareUnlock';
@@ -66,12 +68,30 @@ export default function App() {
   const [method, setMethod] = useState(PRESETS[0].method);
   const [url, setUrl] = useState(PRESETS[0].url);
   const [sim, setSim] = useState<Simulation | null>(null);
+  // 断点仅保留在当前页面会话（内存），不写入 localStorage
+  const [breakpoints, setBreakpoints] = useState<ReadonlySet<string>>(
+    () => new Set<string>(),
+  );
+  const [debug, setDebug] = useState<DebugSession | null>(null);
+  // 每次调试状态变化（暂停 / 继续 / 单步）递增，强制重渲染面板
+  const [, setDebugTick] = useState(0);
+  const bump = useCallback(() => setDebugTick((t) => t + 1), []);
 
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(rules));
   }, [rules]);
 
-  // 撤销 / 重做恢复的是完整规则快照，旧轨迹引用的是旧快照，因此同时清空当前模拟轨迹
+  const toggleBreakpoint = useCallback((ruleId: string) => {
+    setBreakpoints((prev) => {
+      const next = new Set(prev);
+      if (next.has(ruleId)) next.delete(ruleId);
+      else next.add(ruleId);
+      return next;
+    });
+  }, []);
+
+  // 撤销 / 重做恢复的是完整规则快照，旧轨迹引用的是旧快照，因此同时清空当前模拟轨迹；
+  // 进行中的断点会话也因规则变化而过期，由 contextKey 比对自动提示重新开始。
   const undo = useCallback(() => {
     const ok = hist.undo();
     if (ok) setSim(null);
@@ -104,7 +124,43 @@ export default function App() {
     return () => window.removeEventListener('hashchange', onHashChange);
   }, []);
 
-  const run = () => setSim(simulate(rules, method, url));
+  // 普通「运行」：保持原行为，一次跑完全程；同时结束任何进行中的断点会话
+  const run = () => {
+    setSim(simulate(rules, method, url));
+    setDebug(null);
+  };
+
+  const startDebug = useCallback(() => {
+    const session = new DebugSession(
+      rules,
+      method,
+      url,
+      breakpoints,
+      debugContextKey(rules, method, url),
+    );
+    session.start();
+    setDebug(session);
+    setSim(null);
+    bump();
+  }, [rules, method, url, breakpoints, bump]);
+
+  const debugStep = useCallback(() => {
+    debug?.step();
+    bump();
+  }, [debug, bump]);
+
+  const debugResume = useCallback(() => {
+    debug?.resume();
+    bump();
+  }, [debug, bump]);
+
+  const stopDebug = useCallback(() => setDebug(null), []);
+
+  // 规则或请求变化时比对会话上下文签名：不一致即把暂停会话判为过期
+  const debugStale =
+    debug !== null &&
+    !debug.finished &&
+    debug.contextKey !== debugContextKey(rules, method, url);
 
   // 用户在预览页确认：此刻才真正替换状态，同时清空旧轨迹与地址栏 hash。
   // 分享导入相当于换了一份文档，撤销 / 重做分支一并清空。
@@ -113,6 +169,7 @@ export default function App() {
     setMethod(payload.method);
     setUrl(payload.url);
     setSim(null);
+    setDebug(null);
     removeShareHash();
     setPendingShare(null);
   };
@@ -152,6 +209,8 @@ export default function App() {
         <RulesPanel
           history={{ ...hist, undo, redo }}
           onShare={() => setSharing(true)}
+          breakpoints={breakpoints}
+          onToggleBreakpoint={toggleBreakpoint}
         />
         <div className="right-col">
           <Simulator
@@ -160,8 +219,22 @@ export default function App() {
             onMethodChange={setMethod}
             onUrlChange={setUrl}
             onRun={run}
+            onStartDebug={startDebug}
+            breakpointCount={breakpoints.size}
+            debugging={debug !== null}
           />
-          {sim && <TraceView sim={sim} />}
+          {debug ? (
+            <DebugPanel
+              session={debug}
+              stale={debugStale}
+              onStep={debugStep}
+              onResume={debugResume}
+              onRestart={startDebug}
+              onStop={stopDebug}
+            />
+          ) : (
+            sim && <TraceView sim={sim} />
+          )}
         </div>
       </main>
       <RegressionPanel rules={rules} />
